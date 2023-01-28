@@ -1,9 +1,14 @@
 import * as express from "express";
+import * as crypto from "crypto";
 import { Auth } from "./db/auth";
 import { User } from "./db/user";
 import { sequelize } from "./db";
 
-sequelize.sync({ alter: true }).then((res) => {
+function getSHA256ofJSON(text: string) {
+  return crypto.createHash("sha256").update(text).digest("hex");
+}
+
+sequelize.sync({ force: true }).then((res) => {
   console.log(res);
 });
 
@@ -12,18 +17,30 @@ const app = express();
 app.use(express.json());
 
 app.post("/auth", async (req, res) => {
+  const { email, name, birthdate, password } = req.body;
   const [user, created] = await User.findOrCreate({
     where: {
       email: req.body.email,
     },
     defaults: {
-      email: req.body.email,
-      name: req.body.name,
-      birthdate: req.body.birthdate,
+      email,
+      name,
+      birthdate,
     },
   });
-  console.log({ created, user });
-  res.json(user);
+
+  const [auth, authCreated] = await Auth.findOrCreate({
+    where: {
+      user_id: user.dataValues.id,
+    },
+    defaults: {
+      email,
+      password: getSHA256ofJSON(password),
+      user_id: user.dataValues.id,
+    },
+  });
+  console.log({ authCreated, auth });
+  res.json(auth);
 });
 
 app.listen(port, () => {
