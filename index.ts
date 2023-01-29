@@ -66,16 +66,22 @@ app.post("/auth/token", async (req, res) => {
   }
 });
 
-app.get("/me", async (req, res) => {
+async function authMiddleware(req, res, next) {
   const token = req.headers.authorization.split(" ")[1];
   try {
     const data = jwt.verify(token, SECRET);
-    const foundId = data.id;
-    const foundUser = await User.findOne({ where: { id: foundId } });
-    res.json(foundUser);
+    req._user = data;
+    next();
   } catch (e) {
     res.status(401).json({ error: true });
   }
+}
+
+app.get("/me", authMiddleware, async (req, res) => {
+  const foundId = req._user.id;
+  // const foundUser = await User.findOne({ where: { id: foundId } });
+  const foundUser = await User.findByPk(req._user.id);
+  res.json(foundUser);
 });
 
 app.listen(port, () => {
