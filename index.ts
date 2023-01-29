@@ -66,6 +66,18 @@ app.post("/auth/token", async (req, res) => {
   }
 });
 
+app.get("/me", async (req, res) => {
+  const token = req.headers.authorization.split(" ")[1];
+  try {
+    const data = jwt.verify(token, SECRET);
+    const foundId = data.id;
+    const foundUser = await User.findOne({ where: { id: foundId } });
+    res.json(foundUser);
+  } catch (e) {
+    res.status(401).json({ error: true });
+  }
+});
+
 app.listen(port, () => {
   console.log("Corriendo en puerto http://localhost:" + port);
 });
